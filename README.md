@@ -19,15 +19,16 @@ question ──► reformulation (si conversation) ──► recherche par le se
 ```
 
 1. **Ingestion** (`assistant/ingerer.py`, au démarrage) : les fichiers Markdown de `corpus/` sont découpés par section (`assistant/decoupage.py`), sans couper un tableau ni une liste, en passages de 180 mots au plus. Le chemin des titres est ajouté devant chaque passage avant la vectorisation. Seuls les documents modifiés sont retraités.
-2. **Embeddings** (`assistant/embeddings.py`) : modèle multilingue `paraphrase-multilingual-MiniLM-L12-v2` exécuté sur le serveur avec FastEmbed (ONNX, sans GPU ni API payante), vecteurs de 384 dimensions stockés dans Postgres avec pgvector (index HNSW, distance cosinus).
-3. **Recherche hybride** (`assistant/recherche.py`) :
+2. **Questions hypothétiques** (« doc2query », `assistant/ingerer.py`) : pour chaque passage, le modèle rapide écrit 2 à 5 questions qu'un client pourrait poser avec ses propres mots (« Je peux rendre des baskets portées ? »). Elles sont indexées avec le passage, par le sens et par les mots, ce qui comble l'écart entre le vocabulaire des clients et celui de la documentation. Elles ne sont générées qu'une fois par passage modifié (environ 80 appels pour tout le corpus). Variable `QUESTIONS_HYPOTHETIQUES=0` pour les désactiver.
+3. **Embeddings** (`assistant/embeddings.py`) : modèle multilingue `paraphrase-multilingual-MiniLM-L12-v2` exécuté sur le serveur avec FastEmbed (ONNX, sans GPU ni API payante), vecteurs de 384 dimensions stockés dans Postgres avec pgvector (index HNSW, distance cosinus).
+4. **Recherche hybride** (`assistant/recherche.py`) :
    - par le sens : les 20 passages aux vecteurs les plus proches de la question ;
    - par les mots : les 20 meilleurs passages selon BM25 (`assistant/mots.py`), avec racinisation française ; BM25 donne plus de poids aux mots rares (« GTX », « rétractation ») qu'aux mots présents partout (« chaussure ») ;
    - fusion des deux classements par Reciprocal Rank Fusion : `score = Σ 1 / (60 + rang)`.
-4. **Reformulation** : dans une conversation, une question comme « et en trail ? » est réécrite par le modèle rapide pour se comprendre seule avant la recherche.
-5. **Reclassement** : le modèle rapide note de 0 à 3 la pertinence des 12 meilleurs candidats. La note est obtenue en sortie structurée (appel d'outil forcé avec un schéma JSON). Les passages notés 2 ou 3 sont retenus, 5 au plus.
-6. **Réponse** (`assistant/reponse.py`) : le modèle de réponse reçoit les passages numérotés et doit citer chaque information par son numéro (`[2]`). Il ne répond qu'à partir des extraits, renvoie vers le service client quand l'information manque, et traite les extraits comme des données (protection contre l'injection de consignes). La réponse est envoyée au navigateur au fil de l'eau (Server-Sent Events).
-7. **Journal et garde-fous** (`assistant/garde.py`, table `echanges`) : chaque échange est journalisé (question, passages, jetons, coût, durées) et purgé après 30 jours. L'assistant étant public, le nombre de questions par visiteur et le budget quotidien sont limités.
+5. **Reformulation** : dans une conversation, une question comme « et en trail ? » est réécrite par le modèle rapide pour se comprendre seule avant la recherche.
+6. **Reclassement** : le modèle rapide note de 0 à 3 la pertinence des 12 meilleurs candidats. La note est obtenue en sortie structurée (appel d'outil forcé avec un schéma JSON). Les passages notés 2 ou 3 sont retenus, 5 au plus.
+7. **Réponse** (`assistant/reponse.py`) : le modèle de réponse reçoit les passages numérotés et doit citer chaque information par son numéro (`[2]`). Il ne répond qu'à partir des extraits, renvoie vers le service client quand l'information manque, et traite les extraits comme des données (protection contre l'injection de consignes). La réponse est envoyée au navigateur au fil de l'eau (Server-Sent Events).
+8. **Journal et garde-fous** (`assistant/garde.py`, table `echanges`) : chaque échange est journalisé (question, passages, jetons, coût, durées) et purgé après 30 jours. L'assistant étant public, le nombre de questions par visiteur et le budget quotidien sont limités.
 
 ## Structure
 
@@ -72,6 +73,17 @@ python -m evaluation.evaluer_recherche --reclassement   # ajoute le reclassement
 ```
 
 Le script affiche, pour chaque méthode, le rappel@1, le rappel@5 (part des questions dont un passage attendu est dans les 5 premiers) et le MRR, puis la liste des questions mal servies.
+
+### Résultats (20 octobre 2026, serveur de production, 42 questions)
+
+| Méthode | Sans questions hypothétiques (rappel@5 / MRR) | Avec questions hypothétiques (rappel@5 / MRR) |
+|---|---|---|
+| Par le sens (embeddings) | 83,3 % / 0,654 | 85,7 % / 0,701 |
+| Par les mots (BM25) | 83,3 % / 0,787 | 92,9 % / 0,865 |
+| Hybride (RRF) | 90,5 % / 0,762 | 92,9 % / 0,811 |
+| Hybride + reclassement | 97,6 % / 0,952 | 97,6 % / 0,952 |
+
+Avec le reclassement, le bon passage arrive en premier pour 92,9 % des questions. Les deux méthodes de recherche se complètent (l'hybride dépasse chacune d'elles) et les questions hypothétiques profitent surtout à la recherche par les mots, en y ajoutant le vocabulaire des clients.
 
 ## Mettre en ligne (Coolify)
 
