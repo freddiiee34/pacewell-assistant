@@ -47,10 +47,11 @@ def main() -> dict:
     vect = creer(cfg)
     base = Base(cfg.database_url, vect.dimension)
     base.initialiser()
-    ingerer(cfg, base, vect)
+    claude = Claude(cfg.anthropic_api_key) if cfg.anthropic_api_key else None
+    ingerer(cfg, base, vect, claude=claude)   # même index que l'assistant en ligne (questions hypothétiques comprises)
     questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
-    avec_reclassement = "--reclassement" in sys.argv and cfg.anthropic_api_key
-    chercheur = Chercheur(cfg, base, vect, Claude(cfg.anthropic_api_key) if avec_reclassement else None)
+    avec_reclassement = "--reclassement" in sys.argv and claude is not None
+    chercheur = Chercheur(cfg, base, vect, claude if avec_reclassement else None)
 
     rangs = {"vecteurs": [], "mots (BM25)": [], "hybride (RRF)": []}
     if avec_reclassement:
