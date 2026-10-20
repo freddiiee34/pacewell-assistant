@@ -1,0 +1,112 @@
+/* Assistant Pacewell : mêmes couleurs et même police que la landing pacewell.simondelrue.fr */
+:root {
+  --craie: #e8ebee;
+  --papier: #ffffff;
+  --encre: #10213a;
+  --encre-douce: #50607a;
+  --piste: #ff5a1f;
+  --piste-fonce: #c93a08;
+  --metal: #a4aeb9;
+  --trait: #d3d9e0;
+  --vert: #157a4a;
+  --police: "Archivo", "Helvetica Neue", Arial, sans-serif;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--craie); color: var(--encre); font: 400 16px/1.55 var(--police); font-variation-settings: "wdth" 100; }
+button, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--piste); outline-offset: 2px; }
+.invisible { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+
+.bandeau { display: flex; align-items: baseline; justify-content: space-between; gap: 16px; padding: 18px clamp(16px, 4vw, 40px); }
+.marque { font-weight: 900; font-size: 22px; letter-spacing: -0.02em; text-decoration: none; color: var(--encre); font-variation-settings: "wdth" 125; }
+.mention { margin: 0; font-size: 13px; color: var(--encre-douce); text-align: right; }
+
+.scene {
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(320px, 420px); gap: 24px; align-items: start;
+  max-width: 1240px; margin: 0 auto; padding: 0 clamp(16px, 4vw, 40px) 40px;
+}
+
+/* --- Discussion ------------------------------------------------------------------------------ */
+.scene > * { min-width: 0; }
+.discussion { background: var(--papier); border-radius: 14px; padding: clamp(20px, 3vw, 36px); min-height: calc(100svh - 120px); display: flex; flex-direction: column; }
+.intro h1 { font-size: clamp(28px, 3.4vw, 42px); line-height: 1.02; letter-spacing: -0.03em; font-weight: 900; font-variation-settings: "wdth" 118; margin: 0 0 12px; max-width: 18ch; }
+.intro p { color: var(--encre-douce); max-width: 56ch; margin: 0 0 22px; }
+.suggestions { display: flex; flex-wrap: wrap; gap: 8px; }
+.suggestions button {
+  border: 1.5px solid var(--trait); background: none; border-radius: 999px; padding: 8px 14px; font-size: 14px; cursor: pointer; text-align: left;
+}
+.suggestions button:hover { border-color: var(--encre); }
+
+.fil { list-style: none; margin: 0; padding: 0; flex: 1; display: flex; flex-direction: column; gap: 18px; }
+.fil:not(:empty) { padding-top: 8px; }
+.msg-client { overflow-wrap: anywhere; align-self: flex-end; max-width: 80%; background: var(--encre); color: var(--papier); padding: 10px 16px; border-radius: 16px 16px 4px 16px; }
+.msg-assistant { max-width: 92%; }
+.msg-assistant .corps { padding: 2px 0; }
+.msg-assistant .corps p { margin: 0 0 10px; }
+.msg-assistant .corps ul { margin: 0 0 10px; padding-left: 20px; }
+.msg-assistant.choisi .corps { box-shadow: -3px 0 0 var(--piste); padding-left: 14px; }
+.msg-assistant .attente { color: var(--encre-douce); font-size: 14px; }
+.msg-assistant .attente::before {
+  content: ""; display: inline-block; width: 8px; height: 8px; margin-right: 8px; border-radius: 50%; background: var(--piste);
+  animation: pouls 1s ease-in-out infinite;
+}
+@keyframes pouls { 50% { opacity: .25; } }
+.cite {
+  display: inline-grid; place-items: center; min-width: 20px; height: 20px; padding: 0 5px; margin: 0 1px; vertical-align: 2px;
+  font-size: 11.5px; font-weight: 700; border: 0; border-radius: 999px; background: var(--craie); color: var(--encre); cursor: pointer;
+}
+.cite:hover, .cite.actif { background: var(--piste); color: var(--papier); }
+.sources { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.sources a { font-size: 13px; color: var(--encre-douce); text-decoration: none; border: 1px solid var(--trait); border-radius: 8px; padding: 4px 10px; }
+.sources a b { color: var(--encre); margin-right: 4px; }
+.voir-coulisses { margin-top: 8px; border: 0; background: none; padding: 0; font-size: 13px; color: var(--encre-douce); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; }
+.msg-erreur { color: var(--piste-fonce); font-size: 15px; }
+
+.saisie { position: sticky; bottom: 0; display: flex; gap: 10px; align-items: flex-end; margin-top: 24px; padding-top: 12px; background: var(--papier); }
+.saisie textarea {
+  flex: 1; resize: none; max-height: 160px; border: 1.5px solid var(--trait); border-radius: 12px; padding: 12px 14px; background: var(--papier); line-height: 1.4;
+}
+.saisie textarea:focus { outline: none; border-color: var(--encre); }
+.saisie button { border: 0; border-radius: 12px; padding: 13px 20px; background: var(--piste); color: var(--papier); font-weight: 700; cursor: pointer; }
+.saisie button:hover { background: var(--piste-fonce); }
+.saisie button:disabled { opacity: .5; cursor: progress; }
+.pied { font-size: 12px; color: var(--encre-douce); margin: 10px 0 0; }
+
+/* --- Coulisses -------------------------------------------------------------------------------- */
+.coulisses { position: sticky; top: 16px; max-height: calc(100svh - 32px); overflow: auto; background: var(--encre); color: #dfe5ee; border-radius: 14px; padding: 22px; font-size: 14px; }
+.coulisses h2 { margin: 0 0 14px; font-size: 13px; font-weight: 700; color: var(--piste); letter-spacing: .02em; }
+.coulisses h3 { margin: 20px 0 8px; font-size: 13px; font-weight: 700; color: var(--papier); }
+.vide p { margin: 0 0 12px; color: #b9c3d1; }
+.etapes-rag { margin: 0; padding-left: 20px; display: grid; gap: 8px; color: #b9c3d1; }
+.etapes-rag b { color: var(--papier); font-weight: 600; }
+
+.reformulee { background: rgba(255, 255, 255, .06); border-radius: 8px; padding: 8px 12px; color: var(--papier); }
+.passage { border-top: 1px solid rgba(255, 255, 255, .12); padding: 10px 0; }
+.passage .entete { display: flex; justify-content: space-between; gap: 10px; align-items: baseline; }
+.passage .num { display: inline-grid; place-items: center; min-width: 20px; height: 20px; border-radius: 999px; background: rgba(255, 255, 255, .12); font-size: 11.5px; font-weight: 700; margin-right: 6px; }
+.passage.cite-actif .num { background: var(--piste); }
+.passage .titre { color: var(--papier); font-weight: 600; }
+.passage .extrait { overflow-wrap: anywhere; margin: 6px 0 8px; color: #b9c3d1; font-size: 13px; line-height: 1.5; }
+.passage .mesures { display: flex; flex-wrap: wrap; gap: 6px; }
+.passage .mesures span { font-size: 11.5px; padding: 2px 8px; border-radius: 999px; background: rgba(255, 255, 255, .07); color: #cfd7e2; font-variant-numeric: tabular-nums; }
+.note { display: inline-flex; gap: 3px; vertical-align: middle; }
+.note i { width: 14px; height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .15); }
+.note i.plein { background: var(--piste); }
+details.ecartes summary { cursor: pointer; color: #b9c3d1; margin-top: 14px; }
+details.ecartes .passage .titre { font-weight: 500; color: #cfd7e2; }
+.chiffres { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; }
+.chiffres div { background: rgba(255, 255, 255, .06); border-radius: 8px; padding: 8px 10px; }
+.chiffres b { display: block; color: var(--papier); font-size: 17px; font-variant-numeric: tabular-nums; }
+.chiffres span { font-size: 12px; color: #b9c3d1; }
+.duree { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; font-size: 12.5px; margin-top: 6px; }
+.duree .barre { height: 6px; border-radius: 99px; background: rgba(255, 255, 255, .1); overflow: hidden; }
+.duree .barre i { display: block; height: 100%; border-radius: 99px; background: var(--piste); }
+
+@media (max-width: 900px) {
+  .scene { grid-template-columns: minmax(0, 1fr); }
+  .coulisses { position: static; max-height: none; }
+  .discussion { min-height: 70svh; }
+  .mention { display: none; }
+}
+@media (prefers-reduced-motion: reduce) { .msg-assistant .attente::before { animation: none; } }

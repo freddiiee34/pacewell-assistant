@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Assistant Pacewell · démonstration RAG</title>
+  <meta name="description" content="Assistant du service client de Pacewell : il répond à partir de la documentation de la marque, cite ses sources et montre ses coulisses.">
+  <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="only light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css?v=1">
+</head>
+<body>
+  <header class="bandeau">
+    <a class="marque" href="https://pacewell.simondelrue.fr">pacewell</a>
+    <p class="mention">Assistant du service client · marque de démonstration, rien n'est vendu</p>
+  </header>
+
+  <main class="scene">
+    <section class="discussion" aria-labelledby="titre-discussion">
+      <div class="intro" id="intro">
+        <h1 id="titre-discussion">Une question sur une commande, une taille, un retour&nbsp;?</h1>
+        <p>L'assistant répond à partir des 14 pages d'aide et du catalogue de Pacewell, et cite ses sources. À droite, les coulisses montrent ce qu'il a cherché et trouvé.</p>
+        <div class="suggestions" aria-label="Exemples de questions">
+          <button type="button">Je chausse du 42, quelle taille prendre en Tempo 3&nbsp;?</button>
+          <button type="button">Je peux renvoyer des chaussures que j'ai portées&nbsp;?</button>
+          <button type="button">Une chaussure de trail pour la boue en hiver&nbsp;?</button>
+          <button type="button">La livraison est gratuite à partir de combien&nbsp;?</button>
+        </div>
+      </div>
+      <ol class="fil" id="fil" aria-live="polite"></ol>
+      <form class="saisie" id="saisie">
+        <label class="invisible" for="question">Votre question</label>
+        <textarea id="question" rows="1" maxlength="500" placeholder="Posez votre question…" required></textarea>
+        <button type="submit" id="envoyer">Envoyer</button>
+      </form>
+      <p class="pied">Réponses générées par IA à partir de la documentation de Pacewell. Les questions sont conservées 30 jours pour améliorer l'assistant, sans aucune donnée d'identification.</p>
+    </section>
+
+    <aside class="coulisses" aria-labelledby="titre-coulisses">
+      <h2 id="titre-coulisses">Coulisses</h2>
+      <div id="coulisses-vide" class="vide">
+        <p>Posez une question pour voir le chemin de la réponse&nbsp;:</p>
+        <ol class="etapes-rag">
+          <li><b>Reformulation</b> de la question si elle dépend de la conversation</li>
+          <li><b>Recherche par le sens</b> (embeddings) et <b>par les mots</b> (BM25)</li>
+          <li><b>Fusion</b> des deux classements (RRF)</li>
+          <li><b>Reclassement</b> des candidats par un modèle rapide</li>
+          <li><b>Rédaction</b> à partir des passages retenus, avec citations</li>
+        </ol>
+      </div>
+      <div id="coulisses-detail" hidden></div>
+    </aside>
+  </main>
+
+  <script src="/app.js?v=1"></script>
+</body>
+</html>
