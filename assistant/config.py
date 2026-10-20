@@ -39,6 +39,8 @@ class Config:
     candidats_reclasses: int = 12     # passages envoyés au reclassement
     passages_retenus: int = 5         # passages donnés au modèle pour répondre
     reclassement: bool = field(default_factory=lambda: _env("RECLASSEMENT", "1") == "1")
+    # Questions hypothétiques générées à l'ingestion (« doc2query ») : 1 appel au modèle rapide par passage modifié
+    questions_hypothetiques: bool = field(default_factory=lambda: _env("QUESTIONS_HYPOTHETIQUES", "1") == "1")
 
     # Garde-fous d'usage (l'assistant est public et chaque réponse coûte quelques centimes)
     longueur_max_question: int = 500

@@ -38,10 +38,12 @@ class Passage:
     ancre: str        # ancre de la section, pour un lien direct
     ordre: int
     texte: str
+    questions: tuple[str, ...] = ()   # questions hypothétiques de clients (ajoutées à l'ingestion)
 
     @property
     def texte_a_vectoriser(self) -> str:
-        return f"{self.titre_document} > {self.section}\n{self.texte}"
+        base = f"{self.titre_document} > {self.section}\n{self.texte}"
+        return base + ("\nQuestions : " + " ".join(self.questions) if self.questions else "")
 
 
 def lire_document(chemin: Path, racine: Path) -> Document:

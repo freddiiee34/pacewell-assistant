@@ -38,9 +38,9 @@ def creer_app(cfg=None, vect=None, claude=None) -> FastAPI:
         v = vect or creer(cfg)
         base = Base(cfg.database_url, v.dimension)
         base.initialiser()
-        print("[assistant] ingestion :", ingerer(cfg, base, v), flush=True)
-        base.purger_journal()
         c = claude or (Claude(cfg.anthropic_api_key) if cfg.anthropic_api_key else None)
+        print("[assistant] ingestion :", ingerer(cfg, base, v, claude=c), flush=True)
+        base.purger_journal()
         etat.update(base=base, vect=v, claude=c,
                     assistant=Assistant(cfg, base, Chercheur(cfg, base, v, c), c) if c else None,
                     limiteur=Limiteur(cfg.questions_par_fenetre, cfg.fenetre_secondes))

@@ -44,6 +44,7 @@ CREATE TABLE IF NOT EXISTS passages (
   ancre text NOT NULL,
   ordre int NOT NULL,
   texte text NOT NULL,
+  questions text NOT NULL DEFAULT '',
   vecteur vector({dim}) NOT NULL
 );
 CREATE INDEX IF NOT EXISTS passages_vecteur ON passages USING hnsw (vecteur vector_cosine_ops);
@@ -89,6 +90,7 @@ class Base:
                 cx.execute("DROP TABLE passages; DELETE FROM documents;")
             cx.execute(SCHEMA.format(dim=self.dimension))
             cx.execute("ALTER TABLE passages DROP COLUMN IF EXISTS recherche")
+            cx.execute("ALTER TABLE passages ADD COLUMN IF NOT EXISTS questions text NOT NULL DEFAULT ''")
 
     # --- Ingestion -----------------------------------------------------------------------------
     def documents_a_jour(self) -> dict[str, tuple[str, str]]:
@@ -106,9 +108,10 @@ class Base:
             )
             with cx.cursor() as cur:
                 cur.executemany(
-                    "INSERT INTO passages (source, titre_document, url, section, ancre, ordre, texte, vecteur) "
-                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-                    [(p.source, p.titre_document, p.url, p.section, p.ancre, p.ordre, p.texte, np.array(v, dtype=np.float32))
+                    "INSERT INTO passages (source, titre_document, url, section, ancre, ordre, texte, questions, vecteur) "
+                    "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                    [(p.source, p.titre_document, p.url, p.section, p.ancre, p.ordre, p.texte, "\n".join(p.questions),
+                      np.array(v, dtype=np.float32))
                      for p, v in zip(passages, vecteurs)],
                 )
 
@@ -135,10 +138,11 @@ class Base:
         return [Trouve(*l[:7], rang=i + 1, score=float(l[7])) for i, l in enumerate(lignes)]
 
     def indexer_mots(self) -> None:
-        """Reconstruit l'index BM25. Le titre de section est compté deux fois : il résume le passage."""
+        """Reconstruit l'index BM25. Le titre de section est compté deux fois : il résume le passage.
+        Les questions hypothétiques apportent le vocabulaire des clients (« renvoyer », « rendre »…)."""
         with self.connexion() as cx:
-            lignes = cx.execute("SELECT id, titre_document, section, texte FROM passages").fetchall()
-        self._bm25 = Bm25([(i, f"{t} {s} {s} {x}") for i, t, s, x in lignes])
+            lignes = cx.execute("SELECT id, titre_document, section, texte, questions FROM passages").fetchall()
+        self._bm25 = Bm25([(i, f"{t} {s} {s} {x} {q}") for i, t, s, x, q in lignes])
 
     def chercher_texte(self, question: str, limite: int) -> list[Trouve]:
         if self._bm25 is None:
