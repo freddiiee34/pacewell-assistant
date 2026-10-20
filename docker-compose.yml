@@ -1,0 +1,33 @@
+# Déploiement Coolify (type « Docker Compose ») : l'assistant et sa base Postgres avec pgvector.
+# SERVICE_FQDN_* et SERVICE_PASSWORD_* sont des variables que Coolify remplit lui-même.
+services:
+  assistant:
+    build: .
+    environment:
+      - SERVICE_FQDN_ASSISTANT_8000
+      - DATABASE_URL=postgresql://pacewell:${SERVICE_PASSWORD_POSTGRES}@base:5432/pacewell
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MODELE_REPONSE=${MODELE_REPONSE:-claude-sonnet-5-5}
+      - MODELE_RAPIDE=${MODELE_RAPIDE:-claude-haiku-5-5}
+      - BUDGET_JOUR_USD=${BUDGET_JOUR_USD:-2}
+      - QUESTIONS_PAR_FENETRE=${QUESTIONS_PAR_FENETRE:-15}
+    depends_on:
+      base:
+        condition: service_healthy
+    restart: unless-stopped
+  base:
+    image: pgvector/pgvector:pg16
+    environment:
+      - POSTGRES_USER=pacewell
+      - POSTGRES_PASSWORD=${SERVICE_PASSWORD_POSTGRES}
+      - POSTGRES_DB=pacewell
+    volumes:
+      - donnees:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pacewell -d pacewell"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+volumes:
+  donnees:
