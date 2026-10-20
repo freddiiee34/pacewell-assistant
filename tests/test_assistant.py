@@ -151,3 +151,29 @@ def test_api_limite_le_nombre_de_questions(url_base):
 def test_api_refuse_une_question_trop_longue(url_base):
     with _client(url_base) as c:
         assert c.post("/api/question", json={"question": "x" * 600}).status_code == 400
+
+
+# --- Réglage de la réflexion selon le modèle ------------------------------------------------------
+def test_reglage_between_tools_retenu_apres_un_refus():
+    import anthropic
+    import httpx
+    from types import SimpleNamespace
+
+    from assistant.claude import Claude
+
+    appels = []
+
+    def creer(**p):
+        appels.append(p["thinking"]["type"])
+        if p["thinking"]["type"] == "disabled":
+            raise anthropic.BadRequestError(
+                'To turn thinking off on this model, send "thinking": {"type": "between_tools"}',
+                response=httpx.Response(400, request=httpx.Request("POST", "https://api.anthropic.com")), body=None)
+        return SimpleNamespace(content=[SimpleNamespace(type="text", text="ok")],
+                               usage=SimpleNamespace(input_tokens=1, output_tokens=1))
+
+    faux = SimpleNamespace(messages=SimpleNamespace(create=creer))
+    c = Claude("x", client=faux)
+    assert c.texte("modele-a", "s", "m")[0] == "ok"
+    assert c.texte("modele-a", "s", "m")[0] == "ok"
+    assert appels == ["disabled", "between_tools", "between_tools"]
