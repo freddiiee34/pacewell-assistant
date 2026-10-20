@@ -177,3 +177,24 @@ def test_reglage_between_tools_retenu_apres_un_refus():
     assert c.texte("modele-a", "s", "m")[0] == "ok"
     assert c.texte("modele-a", "s", "m")[0] == "ok"
     assert appels == ["disabled", "between_tools", "between_tools"]
+
+
+# --- Questions hypothétiques (doc2query) ------------------------------------------------------------
+def test_questions_hypothetiques_indexees_et_cherchables(url_base):
+    from assistant.base import Base as B
+    cfg = Config(database_url=url_base, embeddings="hachage")
+    vect = Hachage()
+    base = B(url_base, vect.dimension)
+    base.initialiser()
+    faux = FauxClaude()
+    ingerer(cfg, base, vect, tout=True)               # index simple, sans questions
+    r = ingerer(cfg, base, vect, claude=faux)
+    assert r["retraites"] == r["documents"], "activer les questions doit réindexer tous les documents"
+    assert ingerer(cfg, base, vect, claude=faux)["retraites"] == 0
+    with base.connexion() as cx:
+        q = cx.execute("SELECT questions FROM passages WHERE section LIKE 'Conditions d''un retour' LIMIT 1").fetchone()[0]
+    assert "renvoyer des baskets" in q
+    # « baskets » n'apparaît que dans la question générée : BM25 trouve maintenant le passage
+    assert base.chercher_texte("renvoyer des baskets", 3)[0].section == "Conditions d'un retour"
+    # sans client IA, on revient à l'index simple
+    assert ingerer(cfg, base, vect)["retraites"] == r["documents"]

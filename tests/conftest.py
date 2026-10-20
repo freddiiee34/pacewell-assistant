@@ -43,6 +43,10 @@ class FauxClaude:
 
     def outil(self, modele, systeme, message, outil, max_tokens=600):
         self.appels.append(("outil", modele, message))
+        if outil["name"] == "enregistrer_questions":
+            section = message.split("Section : ", 1)[1].split("\n", 1)[0]
+            extra = ["Je peux renvoyer des baskets portées ?"] if section.startswith("Conditions d'un retour") else []
+            return {"questions": [f"Question sur {section} ?"] + extra}, Usage(modele, 300, 40)
         notes = []
         for pid, corps in re.findall(r'<passage id="(\d+)">\n(.*?)</passage>', message, re.S):
             note = max([n for mot, n in self.note_par_mot.items() if mot.lower() in corps.lower()] or [1])
