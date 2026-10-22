@@ -187,6 +187,11 @@ def test_agent_ouvre_un_retour_en_deux_temps(pile, boutique_test):
     assert res["resultat"] == "récapitulatif à faire confirmer" and res["entree"]["email"] == "c***@exemple.fr"
     outil = next(e for e in evts if e["type"] == "outil")
     assert "email" not in outil["entree"], "l'email n'est pas renvoyé au navigateur"
+    # le texte écrit avant l'appel d'outil est une étape, pas la réponse
+    assert next(e for e in evts if e["type"] == "preambule")["texte"] == "Je vérifie."
+    with base.connexion() as cx:
+        rep = cx.execute("SELECT reponse FROM echanges WHERE question LIKE 'Je veux échanger%' ORDER BY id DESC LIMIT 1").fetchone()[0]
+    assert rep.startswith("Voici le récapitulatif")
     # le résultat d'outil a bien été renvoyé au modèle au tour suivant
     dernier = faux.appels[-1][2]
     assert dernier[-1]["content"][0]["type"] == "tool_result" and "a_confirmer" in dernier[-1]["content"][0]["content"]
