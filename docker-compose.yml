@@ -11,6 +11,7 @@ services:
       - MODELE_RAPIDE=${MODELE_RAPIDE:-claude-haiku-5-5}
       - BUDGET_JOUR_USD=${BUDGET_JOUR_USD:-2}
       - QUESTIONS_PAR_FENETRE=${QUESTIONS_PAR_FENETRE:-15}
+      - N8N_ESCALADE_URL=${N8N_ESCALADE_URL:-https://n8n.simondelrue.fr/webhook/assistant-escalade}
     depends_on:
       base:
         condition: service_healthy

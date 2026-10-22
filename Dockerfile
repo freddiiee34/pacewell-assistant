@@ -11,6 +11,7 @@ RUN python -c "import os; from fastembed import TextEmbedding; TextEmbedding(os.
 COPY assistant ./assistant
 COPY evaluation ./evaluation
 COPY corpus ./corpus
+COPY donnees ./donnees
 COPY web ./web
 EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s CMD python -c "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/sante', timeout=4)"
