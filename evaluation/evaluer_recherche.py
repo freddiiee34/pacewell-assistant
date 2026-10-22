@@ -42,17 +42,10 @@ def mesurer(rangs: list[int | None], k: int = 5) -> dict:
             "mrr": round(sum(1 / r for r in rangs if r) / n, 3)}
 
 
-def main() -> dict:
-    cfg = config()
-    vect = creer(cfg)
-    base = Base(cfg.database_url, vect.dimension)
-    base.initialiser()
-    claude = Claude(cfg.anthropic_api_key) if cfg.anthropic_api_key else None
-    ingerer(cfg, base, vect, claude=claude)   # même index que l'assistant en ligne (questions hypothétiques comprises)
+def mesurer_tout(cfg, base, vect, claude=None, reclassement: bool = False) -> dict:
     questions = json.loads(QUESTIONS.read_text(encoding="utf-8"))
-    avec_reclassement = "--reclassement" in sys.argv and claude is not None
+    avec_reclassement = reclassement and claude is not None
     chercheur = Chercheur(cfg, base, vect, claude if avec_reclassement else None)
-
     rangs = {"vecteurs": [], "mots (BM25)": [], "hybride (RRF)": []}
     if avec_reclassement:
         rangs["hybride + reclassement"] = []
@@ -69,9 +62,18 @@ def main() -> dict:
             rangs["hybride + reclassement"].append(rang(r.retenus, q["attendu"]))
         if not rangs["hybride (RRF)"][-1] or rangs["hybride (RRF)"][-1] > 5:
             echecs.append({"question": q["question"], "trouve": [f"{x.source}#{x.section}" for x in h[:3]]})
+    return {"embeddings": vect.nom, "questions": len(questions),
+            "methodes": {m: mesurer(r) for m, r in rangs.items()}, "echecs_hybride_top5": echecs}
 
-    resultats = {"embeddings": vect.nom, "questions": len(questions),
-                 "methodes": {m: mesurer(r) for m, r in rangs.items()}, "echecs_hybride_top5": echecs}
+
+def main() -> dict:
+    cfg = config()
+    vect = creer(cfg)
+    base = Base(cfg.database_url, vect.dimension)
+    base.initialiser()
+    claude = Claude(cfg.anthropic_api_key) if cfg.anthropic_api_key else None
+    ingerer(cfg, base, vect, claude=claude)   # même index que l'assistant en ligne (questions hypothétiques comprises)
+    resultats = mesurer_tout(cfg, base, vect, claude, reclassement="--reclassement" in sys.argv)
     print(json.dumps(resultats, ensure_ascii=False, indent=2))
     if "--json" in sys.argv:
         Path(sys.argv[sys.argv.index("--json") + 1]).write_text(json.dumps(resultats, ensure_ascii=False, indent=2), encoding="utf-8")
