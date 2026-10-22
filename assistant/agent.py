@@ -6,7 +6,7 @@ Boucle :
   3. on recommence, au plus MAX_TOURS fois, jusqu'à une réponse finale.
 
 Le générateur `repondre` produit des événements envoyés au navigateur :
-  etape, document, outil, outil_resultat, texte, erreur, fin.
+  etape, document, preambule, outil, outil_resultat, texte, erreur, fin.
 """
 from __future__ import annotations
 
@@ -74,7 +74,9 @@ class Agent:
         self.cfg, self.base, self.chercheur, self.claude, self.url_escalade = cfg, base, chercheur, claude, url_escalade
 
     def repondre(self, question: str, historique: list[dict] | None = None, image: dict | None = None,
-                 canal: str = "web") -> Iterator[dict]:
+                 canal: str = "web", resultats_outils: list | None = None) -> Iterator[dict]:
+        """`resultats_outils` (facultatif) reçoit le texte complet renvoyé au modèle par chaque outil :
+        l'évaluation s'en sert pour vérifier la fidélité de la réponse. Il n'est jamais envoyé au navigateur."""
         debut = time.perf_counter()
         ctx = Contexte(self.base, self.chercheur, self.url_escalade)
         usages: list[Usage] = []
@@ -100,6 +102,7 @@ class Agent:
             for tour in range(MAX_TOURS):
                 t = time.perf_counter()
                 blocs, arret, usage = [], None, None
+                debut_tour = len(morceaux)
                 for evt in self.claude.flux_outils(self.cfg.modele_reponse, SYSTEME, messages, DEFINITIONS):
                     if evt[0] == "texte":
                         premier = premier or round((time.perf_counter() - debut) * 1000)
@@ -111,6 +114,12 @@ class Agent:
                 usages.append(usage)
                 if arret != "tool_use":
                     break
+                # Texte écrit avant un appel d'outil (« Je vérifie la commande. ») : ce n'est pas la réponse.
+                # Il sort de la réponse et le navigateur l'affiche comme une étape.
+                preambule = "".join(morceaux[debut_tour:]).strip()
+                del morceaux[debut_tour:]
+                if preambule:
+                    yield {"type": "preambule", "texte": preambule}
                 messages.append({"role": "assistant", "content": blocs})
                 resultats = []
                 for b in blocs:
@@ -119,11 +128,10 @@ class Agent:
                     yield {"type": "outil", "nom": b["name"], "entree": {k: v for k, v in b["input"].items()
                                                                          if k != "email"}}
                     texte, trace = executer(ctx, b["name"], b["input"])
+                    if resultats_outils is not None:
+                        resultats_outils.append(f"Outil {b['name']} : {texte}")
                     yield {"type": "outil_resultat", **trace}
                     resultats.append({"type": "tool_result", "tool_use_id": b["id"], "content": texte})
-                if morceaux and not "".join(morceaux).rstrip(" ").endswith("\n"):
-                    morceaux.append("\n\n")
-                    yield {"type": "texte", "texte": "\n\n"}
                 messages.append({"role": "user", "content": resultats})
             else:
                 statut = "trop_de_tours"
