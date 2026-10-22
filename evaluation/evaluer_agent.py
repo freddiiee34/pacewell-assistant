@@ -14,6 +14,7 @@ import base64
 import json
 import sys
 import time
+from datetime import date
 from pathlib import Path
 
 from assistant import boutique
@@ -46,7 +47,9 @@ ont renvoyé (extraits de documentation, données de commande) et la réponse de
 Une réponse est fidèle si toutes ses informations factuelles (prix, délais, règles, statuts, dates, produits) se retrouvent
 dans les résultats d'outils. Les formules de politesse, les questions posées au client et les reformulations fidèles sont
 acceptées. Une date relative correcte (« il y a 11 jours », « jusqu'au 8 novembre ») calculée depuis les données compte
-comme appuyée. Sois strict sur les chiffres."""
+comme appuyée. Une conséquence directe d'une règle fournie (par exemple « hors délai » quand la date de livraison dépasse
+30 jours) compte aussi comme appuyée. Une qualité de produit qui n'est pas dans les extraits (« la plus polyvalente »)
+ne l'est pas. Sois strict sur les chiffres."""
 
 
 def _retour_ouvert(evts: list[dict]) -> bool:
@@ -54,16 +57,16 @@ def _retour_ouvert(evts: list[dict]) -> bool:
                and e.get("resultat", "").startswith("retour ") for e in evts)
 
 
+CONTEXTE_FIXE = ("Informations données à l'assistant dans sa consigne : date du jour {date} ; service client joignable à "
+                 "aide@pacewell.fr, au 03 20 00 00 00, du lundi au vendredi de 9 h à 18 h.")
+
+
 def _contenu_outils(evts: list[dict], textes_outils: list[str]) -> str:
-    morceaux = []
+    morceaux = [CONTEXTE_FIXE.format(date=date.today().isoformat())]
     for e in evts:
         if e["type"] == "document":
             morceaux.append("Document lu : " + json.dumps(e["champs"], ensure_ascii=False))
-        if e["type"] == "outil_resultat":
-            morceaux.append(f"Outil {e['outil']} : {e.get('resultat', '')}")
-            for p in e.get("retenus", []):
-                morceaux.append(f"Extrait « {p['titre_document']} > {p['section']} » : {p['extrait']}")
-    return "\n".join(morceaux + textes_outils)[:12000]
+    return "\n".join(morceaux + textes_outils)[:30000]
 
 
 def juger(claude: Claude, modele: str, question: str, sources: str, reponse: str) -> dict:
@@ -87,7 +90,8 @@ def evaluer(agent: Agent, claude: Claude, cfg, base) -> dict:
             image = {"donnees": base64.b64encode((RACINE / sc["image"]).read_bytes()).decode(), "type": "image/jpeg"}
         textes_outils: list[str] = []
         for i, tour in enumerate(sc["tours"]):
-            evts = list(agent.repondre(tour, historique, image if i == 0 else None, canal="evaluation"))
+            evts = list(agent.repondre(tour, historique, image if i == 0 else None, canal="evaluation",
+                                       resultats_outils=textes_outils))
             evts_tous.extend(evts)
             reponse = "".join(e["texte"] for e in evts if e["type"] == "texte").strip()
             fin = evts[-1]
