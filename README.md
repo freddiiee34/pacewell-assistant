@@ -32,7 +32,7 @@ question ──► reformulation (si conversation) ──► recherche par le se
 
 ## Étape 2 : l'agent et ses outils
 
-L'agent (`assistant/agent.py`) reçoit la question, l'historique de la conversation et la date du jour. Le modèle de réponse décide lui-même quels outils appeler ; leurs résultats lui sont renvoyés et il continue, jusqu'à 6 tours, avant d'écrire la réponse finale en flux.
+L'agent (`assistant/agent.py`) reçoit la question, l'historique de la conversation et la date du jour. Le modèle de réponse décide lui-même quels outils appeler ; leurs résultats lui sont renvoyés et il continue, jusqu'à 6 tours, avant d'écrire la réponse finale en flux. Une phrase écrite avant un appel d'outil (« Je vérifie la commande. ») est affichée comme une étape d'attente puis retirée : seule la réponse finale reste dans la conversation et dans le journal.
 
 | Outil | Rôle |
 |---|---|
