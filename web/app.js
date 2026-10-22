@@ -242,6 +242,7 @@
           if (bloc.indexOf("data: ") !== 0) return;
           var ev = JSON.parse(bloc.slice(6));
           if (ev.type === "document") { r.document = ev.champs; afficherCoulisses(idx); }
+          else if (ev.type === "preambule") { r.texte = ""; corps.innerHTML = '<p class="attente">' + e(ev.texte) + "</p>"; }
           else if (ev.type === "outil") { etat(EN_COURS[ev.nom] || "Outil en cours…"); }
           else if (ev.type === "outil_resultat") { r.traces.push(ev); etat(""); afficherCoulisses(idx); }
           else if (ev.type === "texte") { r.texte += ev.texte; corps.innerHTML = rendre(r.texte, idx); }
