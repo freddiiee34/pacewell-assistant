@@ -3,58 +3,82 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Assistant Pacewell · démonstration RAG</title>
-  <meta name="description" content="Assistant du service client de Pacewell : il répond à partir de la documentation de la marque, cite ses sources et montre ses coulisses.">
+  <title>Assistant Pacewell</title>
+  <meta name="description" content="Agent IA du service client de Pacewell : il cherche dans la documentation, consulte les commandes, ouvre des retours, lit les bons de livraison et montre ses coulisses.">
   <meta name="robots" content="noindex">
   <meta name="color-scheme" content="only light">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css?v=1">
+  <link rel="stylesheet" href="/style.css?v=2">
 </head>
 <body>
   <header class="bandeau">
     <a class="marque" href="https://pacewell.simondelrue.fr">pacewell</a>
-    <p class="mention">Assistant du service client · marque de démonstration, rien n'est vendu</p>
+    <nav class="liens-haut" aria-label="Pages de l'assistant">
+      <a href="/" aria-current="page">Assistant</a>
+      <a href="/tableau-de-bord.html">Tableau de bord</a>
+      <a href="/mcp.html">Utiliser avec Claude</a>
+    </nav>
   </header>
 
   <main class="scene">
     <section class="discussion" aria-labelledby="titre-discussion">
       <div class="intro" id="intro">
         <h1 id="titre-discussion">Une question sur une commande, une taille, un retour&nbsp;?</h1>
-        <p>L'assistant répond à partir des 14 pages d'aide et du catalogue de Pacewell, et cite ses sources. À droite, les coulisses montrent ce qu'il a cherché et trouvé.</p>
+        <p>L'assistant cherche dans les 14 pages d'aide et le catalogue de Pacewell, consulte les commandes, ouvre les retours et lit les photos de bons de livraison. Les coulisses, à droite, montrent chaque étape.</p>
+        <div class="demo">
+          <p><b>Commandes de démonstration</b>, à utiliser telles quelles&nbsp;:</p>
+          <ul>
+            <li><code>PW104233</code> · <code>camille.martin@exemple.fr</code> · livrée il y a 11 jours</li>
+            <li><code>PW104388</code> · <code>julien.robert@exemple.fr</code> · en cours de livraison</li>
+            <li><code>PW103917</code> · <code>sarah.lefevre@exemple.fr</code> · livrée il y a 42 jours</li>
+          </ul>
+        </div>
         <div class="suggestions" aria-label="Exemples de questions">
-          <button type="button">Je chausse du 42, quelle taille prendre en Tempo 3&nbsp;?</button>
+          <button type="button">Où en est ma commande PW104388 ? Mon email : julien.robert@exemple.fr</button>
+          <button type="button">Je voudrais échanger mes Tempo 3 contre du 43. Commande PW104233, camille.martin@exemple.fr</button>
           <button type="button">Je peux renvoyer des chaussures que j'ai portées&nbsp;?</button>
-          <button type="button">Une chaussure de trail pour la boue en hiver&nbsp;?</button>
-          <button type="button">La livraison est gratuite à partir de combien&nbsp;?</button>
+          <button type="button" data-exemple="/exemples/bon-de-livraison.jpg">Envoyer un exemple de bon de livraison</button>
         </div>
       </div>
       <ol class="fil" id="fil" aria-live="polite"></ol>
       <form class="saisie" id="saisie">
-        <label class="invisible" for="question">Votre question</label>
-        <textarea id="question" rows="1" maxlength="500" placeholder="Posez votre question…" required></textarea>
-        <button type="submit" id="envoyer">Envoyer</button>
+        <div class="piece" id="piece" hidden>
+          <img id="piece-apercu" alt="">
+          <span id="piece-nom"></span>
+          <button type="button" id="piece-retirer" aria-label="Retirer la photo">Retirer</button>
+        </div>
+        <div class="ligne-saisie">
+          <label class="joindre" title="Joindre une photo de bon de livraison ou de ticket">
+            <input type="file" id="fichier" accept="image/jpeg,image/png,image/webp">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5l-8.6 8.6a5.5 5.5 0 01-7.8-7.8l8.6-8.6a3.7 3.7 0 015.2 5.2l-8.6 8.6a1.8 1.8 0 01-2.6-2.6l7.9-7.9"/></svg>
+            <span class="invisible">Joindre une photo</span>
+          </label>
+          <label class="invisible" for="question">Votre question</label>
+          <textarea id="question" rows="1" maxlength="500" placeholder="Posez votre question…"></textarea>
+          <button type="submit" id="envoyer">Envoyer</button>
+        </div>
       </form>
-      <p class="pied">Réponses générées par IA à partir de la documentation de Pacewell. Les questions sont conservées 30 jours pour améliorer l'assistant, sans aucune donnée d'identification.</p>
+      <p class="pied">Réponses générées par IA. Pacewell est une marque fictive : aucune commande ni aucun retour n'est réel. Les échanges sont conservés 30 jours pour améliorer l'assistant ; les photos ne sont pas conservées.</p>
     </section>
 
     <aside class="coulisses" aria-labelledby="titre-coulisses">
       <h2 id="titre-coulisses">Coulisses</h2>
       <div id="coulisses-vide" class="vide">
-        <p>Posez une question pour voir le chemin de la réponse&nbsp;:</p>
+        <p>L'assistant est un agent&nbsp;: il décide lui-même des outils à utiliser.</p>
         <ol class="etapes-rag">
-          <li><b>Reformulation</b> de la question si elle dépend de la conversation</li>
-          <li><b>Recherche par le sens</b> (embeddings) et <b>par les mots</b> (BM25)</li>
-          <li><b>Fusion</b> des deux classements (RRF)</li>
-          <li><b>Reclassement</b> des candidats par un modèle rapide</li>
-          <li><b>Rédaction</b> à partir des passages retenus, avec citations</li>
+          <li><b>chercher_documentation</b> : recherche par le sens et par les mots, fusion, reclassement, extraits numérotés à citer</li>
+          <li><b>consulter_commande</b> : statut, livraison, date limite de retour, avec numéro et email</li>
+          <li><b>ouvrir_retour</b> : vérifie les conditions, fait confirmer, puis enregistre</li>
+          <li><b>transmettre_a_un_humain</b> : prévient un conseiller par email</li>
+          <li><b>Lecture de document</b> : une photo de bon de livraison devient des champs structurés</li>
         </ol>
       </div>
       <div id="coulisses-detail" hidden></div>
     </aside>
   </main>
 
-  <script src="/app.js?v=1"></script>
+  <script src="/app.js?v=2"></script>
 </body>
 </html>

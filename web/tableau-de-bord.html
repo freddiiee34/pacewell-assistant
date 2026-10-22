@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tableau de bord de l'assistant</title>
+  <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="only light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css?v=2">
+</head>
+<body>
+  <header class="bandeau">
+    <a class="marque" href="https://pacewell.simondelrue.fr">pacewell</a>
+    <nav class="liens-haut" aria-label="Pages de l'assistant">
+      <a href="/">Assistant</a>
+      <a href="/tableau-de-bord.html" aria-current="page">Tableau de bord</a>
+      <a href="/mcp.html">Utiliser avec Claude</a>
+    </nav>
+  </header>
+  <main class="page-texte large">
+    <h1>Tableau de bord de l'assistant</h1>
+    <p>Ce qui se passe en production sur les 30 derniers jours, et la qualité mesurée par les évaluations automatiques. Aucune question ni réponse n'est affichée ici, seulement des agrégats.</p>
+
+    <section aria-labelledby="t-usage">
+      <h2 id="t-usage">Usage et coûts</h2>
+      <div class="kpis" id="kpis"><p>Chargement…</p></div>
+      <div class="graphes">
+        <figure class="graphe"><figcaption>Échanges par jour (14 derniers jours)</figcaption><div id="g-echanges"></div></figure>
+        <figure class="graphe"><figcaption>Coût par jour, en centimes de dollar</figcaption><div id="g-cout"></div></figure>
+      </div>
+      <h3>Outils appelés par l'agent</h3>
+      <table class="tableau" id="t-outils"><thead><tr><th>Outil</th><th class="nb">Appels</th><th class="nb">Durée moyenne</th></tr></thead><tbody></tbody></table>
+    </section>
+
+    <section aria-labelledby="t-qualite">
+      <h2 id="t-qualite">Qualité mesurée</h2>
+      <div id="qualite"><p>Aucune évaluation publiée pour l'instant.</p></div>
+    </section>
+  </main>
+  <div class="infobulle" id="infobulle" role="status" hidden></div>
+
+  <script>
+  (function () {
+    "use strict";
+    function e(s) { return String(s == null ? "" : s).replace(/[&<>"']/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]; }); }
+    function nb(v, d) { return Number(v || 0).toLocaleString("fr-FR", { maximumFractionDigits: d == null ? 0 : d, minimumFractionDigits: d == null ? 0 : d }); }
+    function ms(v) { return v >= 1000 ? nb(v / 1000, 1) + " s" : nb(v) + " ms"; }
+    function pct(v) { return nb(v * 100, 0) + " %"; }
+    var LIBELLES = { chercher_documentation: "Recherche dans la documentation", consulter_commande: "Consultation de commande",
+      ouvrir_retour: "Ouverture de retour", transmettre_a_un_humain: "Transmission à un conseiller" };
+    var bulle = document.getElementById("infobulle");
+
+    // Barres verticales d'une seule série : pas de légende (le titre la nomme), infobulle au survol et au clavier.
+    function barres(el, donnees, valeur, format) {
+      var W = 560, H = 190, g = 34, b = 22, n = donnees.length;
+      var max = Math.max.apply(null, donnees.map(valeur).concat([1e-9]));
+      var pas = (W - g) / n, l = Math.min(26, pas - 6);
+      var s = '<svg viewBox="0 0 ' + W + " " + H + '" role="img" aria-label="' + e(el.parentNode.querySelector("figcaption").textContent) + '">';
+      [0, 0.5, 1].forEach(function (k) {
+        var y = H - b - k * (H - b - 12);
+        s += '<line x1="' + g + '" x2="' + W + '" y1="' + y + '" y2="' + y + '" class="grille"/><text x="' + (g - 6) + '" y="' + (y + 4) + '" class="axe" text-anchor="end">' + format(max * k) + "</text>";
+      });
+      donnees.forEach(function (d, i) {
+        var v = valeur(d), h = v ? Math.max(3, v / max * (H - b - 12)) : 0, x = g + i * pas + (pas - l) / 2, y = H - b - h;
+        var jour = new Date(d.jour + "T12:00:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+        if (h) s += '<path class="barre-donnee" d="M' + x + "," + (H - b) + "V" + (y + 4) + "q0,-4 4,-4h" + (l - 8) + "q4,0 4,4V" + (H - b) + 'Z"/>';
+        s += '<rect class="cible" x="' + (g + i * pas) + '" y="0" width="' + pas + '" height="' + (H - b) + '" tabindex="0" data-info="' + e(jour + " : " + format(v)) + '"/>';
+        if (i % 2 === n % 2) s += '<text x="' + (x + l / 2) + '" y="' + (H - 6) + '" class="axe" text-anchor="middle">' + e(jour) + "</text>";
+      });
+      el.innerHTML = s + "</svg>";
+      [].forEach.call(el.querySelectorAll(".cible"), function (c) {
+        function montrer(ev) {
+          var r = c.getBoundingClientRect();
+          bulle.textContent = c.dataset.info; bulle.hidden = false;
+          bulle.style.left = (r.left + r.width / 2 + window.scrollX) + "px"; bulle.style.top = (r.top + window.scrollY + 8) + "px";
+          c.classList.add("survol");
+        }
+        function cacher() { bulle.hidden = true; c.classList.remove("survol"); }
+        c.addEventListener("mouseenter", montrer); c.addEventListener("focus", montrer);
+        c.addEventListener("mouseleave", cacher); c.addEventListener("blur", cacher);
+      });
+    }
+
+    fetch("/api/statistiques").then(function (r) { return r.json(); }).then(function (s) {
+      document.getElementById("kpis").innerHTML = [
+        [nb(s.echanges), "échanges"], [nb(s.cout_total_usd, 2) + " $", "coût total"],
+        [nb(s.cout_moyen_usd * 100, 2) + " ct", "coût moyen par échange"], [ms(s.duree_mediane_ms), "durée médiane (95 % sous " + ms(s.duree_p95_ms) + ")"],
+        [ms(s.premier_mot_median_ms), "avant le premier mot (médiane)"], [pct(s.part_cache), "des jetons lus servis par le cache"],
+        [pct(s.taux_erreur), "d'échanges en erreur"], [nb(s.documents_lus) + " / " + nb(s.appels_mcp), "photos lues / appels MCP"]
+      ].map(function (k) { return '<div><b>' + e(k[0]) + "</b><span>" + e(k[1]) + "</span></div>"; }).join("");
+      barres(document.getElementById("g-echanges"), s.par_jour, function (d) { return d.echanges; }, function (v) { return nb(v); });
+      barres(document.getElementById("g-cout"), s.par_jour, function (d) { return d.cout_usd * 100; }, function (v) { return nb(v, 1); });
+      document.querySelector("#t-outils tbody").innerHTML = s.outils.length ? s.outils.map(function (o) {
+        return "<tr><td>" + e(LIBELLES[o.outil] || o.outil) + '</td><td class="nb">' + nb(o.appels) + '</td><td class="nb">' + ms(o.duree_moyenne_ms) + "</td></tr>";
+      }).join("") : '<tr><td colspan="3">Aucun appel pour l\'instant.</td></tr>';
+    }).catch(function () { document.getElementById("kpis").innerHTML = "<p>Statistiques indisponibles.</p>"; });
+
+    fetch("/api/evaluation").then(function (r) { return r.json(); }).then(function (ev) {
+      if (!ev || !ev.recherche) return;
+      var h = "<p>Dernière évaluation : " + e(new Date(ev.date).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" })) + ".</p>";
+      h += "<h3>Recherche (" + ev.recherche.questions + " questions)</h3><table class=\"tableau\"><thead><tr><th>Méthode</th><th class=\"nb\">Bon passage en 1er</th><th class=\"nb\">Dans les 5 premiers</th><th class=\"nb\">MRR</th></tr></thead><tbody>";
+      Object.keys(ev.recherche.methodes).forEach(function (m) {
+        var x = ev.recherche.methodes[m];
+        h += "<tr><td>" + e(m) + '</td><td class="nb">' + pct(x["rappel@1"]) + '</td><td class="nb">' + pct(x["rappel@5"]) + '</td><td class="nb">' + nb(x.mrr, 3) + "</td></tr>";
+      });
+      h += "</tbody></table>";
+      if (ev.agent) {
+        var a = ev.agent;
+        h += "<h3>Agent (" + a.scenarios + " conversations de test)</h3><div class=\"kpis\">" + [
+          [pct(a.taux_reussite), "de scénarios réussis"], [pct(a.outils_corrects), "avec les bons outils"],
+          [pct(a.fidelite), "réponses fidèles aux sources (IA juge)"], [pct(a.securite), "tests de sécurité passés"],
+          [nb(a.cout_moyen_usd * 100, 2) + " ct", "coût moyen par conversation"]
+        ].map(function (k) { return '<div><b>' + e(k[0]) + "</b><span>" + e(k[1]) + "</span></div>"; }).join("") + "</div>";
+        if (a.echecs && a.echecs.length) {
+          h += "<details><summary>" + a.echecs.length + " scénario(s) en échec</summary><ul>" + a.echecs.map(function (x) {
+            return "<li><b>" + e(x.nom) + "</b> : " + e(x.raison) + "</li>"; }).join("") + "</ul></details>";
+        }
+      }
+      document.getElementById("qualite").innerHTML = h;
+    }).catch(function () {});
+  })();
+  </script>
+</body>
+</html>

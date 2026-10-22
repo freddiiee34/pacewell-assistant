@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Pacewell dans Claude (MCP)</title>
+  <meta name="robots" content="noindex">
+  <meta name="color-scheme" content="only light">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Archivo:wdth,wght@62..125,400..900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/style.css?v=2">
+</head>
+<body>
+  <header class="bandeau">
+    <a class="marque" href="https://pacewell.simondelrue.fr">pacewell</a>
+    <nav class="liens-haut" aria-label="Pages de l'assistant">
+      <a href="/">Assistant</a>
+      <a href="/tableau-de-bord.html">Tableau de bord</a>
+      <a href="/mcp.html" aria-current="page">Utiliser avec Claude</a>
+    </nav>
+  </header>
+  <main class="page-texte">
+    <h1>Les outils de Pacewell, directement dans Claude</h1>
+    <p>Les outils de l'assistant sont aussi publiés en serveur <b>MCP</b> (Model Context Protocol), le standard ouvert qui permet à un assistant IA d'utiliser les outils d'une entreprise. Une fois branché, Claude peut chercher dans la documentation de Pacewell, consulter une commande ou ouvrir un retour depuis n'importe quelle conversation.</p>
+
+    <h2>Adresse du serveur</h2>
+    <p class="adresse"><code id="url-mcp">https://assistant.simondelrue.fr/mcp</code> <button type="button" id="copier">Copier</button></p>
+
+    <h2>Le brancher</h2>
+    <ol>
+      <li><b>Claude (web ou application)</b> : Paramètres › Connecteurs › Ajouter un connecteur personnalisé, puis coller l'adresse ci-dessus.</li>
+      <li><b>Claude Code</b> : <code>claude mcp add --transport http pacewell https://assistant.simondelrue.fr/mcp</code></li>
+    </ol>
+    <p>Puis demander par exemple&nbsp;: « Où en est la commande PW104233 de camille.martin@exemple.fr, et peut-elle encore être retournée&nbsp;? »</p>
+
+    <h2>Outils exposés</h2>
+    <table class="tableau">
+      <thead><tr><th>Outil</th><th>Ce qu'il fait</th></tr></thead>
+      <tbody>
+        <tr><td><code>chercher_documentation</code></td><td>Recherche hybride (sens + mots) avec reclassement dans la documentation, extraits numérotés et sourcés.</td></tr>
+        <tr><td><code>consulter_commande</code></td><td>Statut, articles, suivi et date limite de retour. Exige le numéro et l'email de la commande.</td></tr>
+        <tr><td><code>ouvrir_retour</code></td><td>Vérifie les conditions et renvoie un récapitulatif, puis enregistre le retour une fois confirmé.</td></tr>
+      </tbody>
+    </table>
+    <p class="note-bas">Serveur de démonstration : données fictives, nombre d'appels limité par un budget quotidien. Le même code sert l'assistant web et le serveur MCP : les vérifications (numéro + email, délais, confirmation) sont identiques.</p>
+  </main>
+  <script>
+    document.getElementById("copier").addEventListener("click", function () {
+      var b = this;
+      navigator.clipboard.writeText(document.getElementById("url-mcp").textContent).then(function () {
+        b.textContent = "Copiée"; setTimeout(function () { b.textContent = "Copier"; }, 1500);
+      });
+    });
+  </script>
+</body>
+</html>
