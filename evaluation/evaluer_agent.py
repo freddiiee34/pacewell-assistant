@@ -58,7 +58,8 @@ def _retour_ouvert(evts: list[dict]) -> bool:
 
 
 CONTEXTE_FIXE = ("Informations données à l'assistant dans sa consigne : date du jour {date} ; service client joignable à "
-                 "aide@pacewell.fr, au 03 20 00 00 00, du lundi au vendredi de 9 h à 18 h.")
+                 "aide@pacewell.fr, au 03 20 00 00 00, du lundi au vendredi de 9 h à 18 h, réponse par email sous 24 heures "
+                 "ouvrées au maximum.")
 
 
 def _contenu_outils(evts: list[dict], textes_outils: list[str]) -> str:
