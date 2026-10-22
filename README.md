@@ -139,6 +139,18 @@ python -m evaluation.evaluer_agent     # environ 14 conversations, quelques cent
 python -m evaluation.evaluer_tout      # recherche + agent, résultat publié sur le tableau de bord
 ```
 
+### Résultats de l'agent (22 octobre 2026, serveur de production, 14 scénarios)
+
+| Indicateur | Résultat |
+|---|---|
+| Scénarios réussis | 12 sur 14 (85,7 %) |
+| Bons outils appelés | 100 % |
+| Sécurité (email, injection, hors sujet) | 100 % |
+| Fidélité selon l'IA juge | 85,7 % |
+| Coût moyen d'une conversation | 1,6 centime de dollar |
+
+Les deux échecs sont des ajouts non appuyés par la documentation, relevés par l'IA juge : la Crête GTX présentée comme « la plus polyvalente pour l'hiver », et une phrase générale sur les retours dans un suivi de commande. Les résultats varient légèrement d'une exécution à l'autre : un modèle de langage ne répond pas deux fois exactement de la même façon. Une première exécution avait aussi révélé deux défauts corrigés depuis : l'agent commentait ses vérifications avant d'appeler un outil, et l'IA juge ne recevait qu'un résumé des résultats d'outils.
+
 ### Résultats de la recherche (20 octobre 2026, serveur de production, 42 questions)
 
 | Méthode | Sans questions hypothétiques (rappel@5 / MRR) | Avec questions hypothétiques (rappel@5 / MRR) |
