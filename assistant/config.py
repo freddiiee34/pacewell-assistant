@@ -48,6 +48,9 @@ class Config:
     fenetre_secondes: int = 600
     budget_jour_usd: float = field(default_factory=lambda: float(_env("BUDGET_JOUR_USD", "2")))
 
+    # Webhook n8n qui prévient un conseiller quand l'agent transmet une demande (workflow « Assistant · Escalade »)
+    url_escalade: str = field(default_factory=lambda: _env("N8N_ESCALADE_URL", ""))
+
     dossier_corpus: Path = RACINE / "corpus"
 
 

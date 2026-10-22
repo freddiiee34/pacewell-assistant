@@ -23,10 +23,32 @@ class Usage:
     modele: str
     entree: int
     sortie: int
+    cache_ecriture: int = 0   # jetons mis en cache (facturés 1,25 fois le prix d'entrée)
+    cache_lecture: int = 0    # jetons relus depuis le cache (facturés 0,1 fois le prix d'entrée)
 
     def cout(self, prix: dict) -> float:
         pe, ps = prix.get(self.modele, (0.0, 0.0))
-        return (self.entree * pe + self.sortie * ps) / 1_000_000
+        return (self.entree * pe + self.cache_ecriture * pe * 1.25 + self.cache_lecture * pe * 0.1 + self.sortie * ps) / 1_000_000
+
+    @classmethod
+    def depuis(cls, modele: str, u) -> "Usage":
+        return cls(modele, u.input_tokens, u.output_tokens,
+                   getattr(u, "cache_creation_input_tokens", 0) or 0, getattr(u, "cache_read_input_tokens", 0) or 0)
+
+
+def bloc_pour_api(b) -> dict | None:
+    """Convertit un bloc de réponse en bloc à renvoyer à l'API au tour suivant (les autres champs sont ignorés)."""
+    d = b if isinstance(b, dict) else b.model_dump()
+    t = d.get("type")
+    if t == "text":
+        return {"type": "text", "text": d["text"]}
+    if t == "tool_use":
+        return {"type": "tool_use", "id": d["id"], "name": d["name"], "input": d["input"]}
+    if t == "thinking":
+        return {"type": "thinking", "thinking": d["thinking"], "signature": d["signature"]}
+    if t == "redacted_thinking":
+        return {"type": "redacted_thinking", "data": d["data"]}
+    return None
 
 
 class Claude:
@@ -48,7 +70,7 @@ class Claude:
         r = self._appel(modele, self.client.messages.create, max_tokens=max_tokens, system=systeme,
                         messages=[{"role": "user", "content": message}])
         texte = "".join(b.text for b in r.content if b.type == "text")
-        return texte, Usage(modele, r.usage.input_tokens, r.usage.output_tokens)
+        return texte, Usage.depuis(modele, r.usage)
 
     def outil(self, modele: str, systeme: str, message: str, outil: dict, max_tokens: int = 600) -> tuple[dict | None, Usage]:
         """Sortie structurée : le modèle est obligé d'appeler l'outil, dont le schéma JSON fixe le format."""
@@ -56,7 +78,35 @@ class Claude:
                         tools=[outil], tool_choice={"type": "tool", "name": outil["name"]},
                         messages=[{"role": "user", "content": message}])
         donnees = next((b.input for b in r.content if b.type == "tool_use"), None)
-        return donnees, Usage(modele, r.usage.input_tokens, r.usage.output_tokens)
+        return donnees, Usage.depuis(modele, r.usage)
+
+    def image_outil(self, modele: str, systeme: str, image_b64: str, media: str, consigne: str, outil: dict,
+                    max_tokens: int = 800) -> tuple[dict | None, Usage]:
+        """Vision + sortie structurée : le modèle lit une image et remplit le schéma de l'outil."""
+        contenu = [{"type": "image", "source": {"type": "base64", "media_type": media, "data": image_b64}},
+                   {"type": "text", "text": consigne}]
+        r = self._appel(modele, self.client.messages.create, max_tokens=max_tokens, system=systeme,
+                        tools=[outil], tool_choice={"type": "tool", "name": outil["name"]},
+                        messages=[{"role": "user", "content": contenu}])
+        donnees = next((b.input for b in r.content if b.type == "tool_use"), None)
+        return donnees, Usage.depuis(modele, r.usage)
+
+    def flux_outils(self, modele: str, systeme: str, messages: list[dict], outils: list[dict], max_tokens: int = 900):
+        """Un tour d'agent en flux : renvoie ("texte", morceau)… puis ("fin", blocs, raison_d_arret, usage).
+
+        Le prompt système et les outils sont mis en cache (cache_control) : d'un tour à l'autre et d'une question
+        à l'autre, ces ~2 000 jetons sont relus à 10 % du prix au lieu d'être refacturés.
+        """
+        systeme_blocs = [{"type": "text", "text": systeme, "cache_control": {"type": "ephemeral"}}]
+        gestionnaire, flux = self._appel(modele, self._ouvrir_flux, max_tokens=max_tokens, system=systeme_blocs,
+                                         tools=outils, messages=messages)
+        try:
+            for morceau in flux.text_stream:
+                yield ("texte", morceau)
+            final = flux.get_final_message()
+        finally:
+            gestionnaire.__exit__(None, None, None)
+        yield ("fin", [b for b in (bloc_pour_api(x) for x in final.content) if b], final.stop_reason, Usage.depuis(modele, final.usage))
 
     def flux(self, modele: str, systeme: str, messages: list[dict], max_tokens: int = 700) -> Iterator[str | Usage]:
         """Réponse au fil de l'eau : renvoie des morceaux de texte, puis l'usage final."""
@@ -68,7 +118,7 @@ class Claude:
             final = flux.get_final_message()
         finally:
             gestionnaire.__exit__(None, None, None)
-        yield Usage(modele, final.usage.input_tokens, final.usage.output_tokens)
+        yield Usage.depuis(modele, final.usage)
 
     def _ouvrir_flux(self, **params):
         gestionnaire = self.client.messages.stream(**params)

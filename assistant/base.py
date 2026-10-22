@@ -59,9 +59,17 @@ CREATE TABLE IF NOT EXISTS echanges (
   modele text NOT NULL,
   jetons jsonb NOT NULL,
   cout_usd numeric(10, 6) NOT NULL,
-  durees_ms jsonb NOT NULL
+  durees_ms jsonb NOT NULL,
+  outils jsonb NOT NULL DEFAULT '[]',
+  canal text NOT NULL DEFAULT 'web',
+  document boolean NOT NULL DEFAULT false
 );
 CREATE INDEX IF NOT EXISTS echanges_date ON echanges (cree_le);
+CREATE TABLE IF NOT EXISTS evaluations (
+  id bigserial PRIMARY KEY,
+  cree_le timestamptz NOT NULL DEFAULT now(),
+  resultats jsonb NOT NULL
+);
 """
 
 
@@ -91,6 +99,9 @@ class Base:
             cx.execute(SCHEMA.format(dim=self.dimension))
             cx.execute("ALTER TABLE passages DROP COLUMN IF EXISTS recherche")
             cx.execute("ALTER TABLE passages ADD COLUMN IF NOT EXISTS questions text NOT NULL DEFAULT ''")
+            cx.execute("ALTER TABLE echanges ADD COLUMN IF NOT EXISTS outils jsonb NOT NULL DEFAULT '[]', "
+                       "ADD COLUMN IF NOT EXISTS canal text NOT NULL DEFAULT 'web', "
+                       "ADD COLUMN IF NOT EXISTS document boolean NOT NULL DEFAULT false")
 
     # --- Ingestion -----------------------------------------------------------------------------
     def documents_a_jour(self) -> dict[str, tuple[str, str]]:
@@ -159,16 +170,61 @@ class Base:
     def journaliser(self, **e) -> None:
         with self.connexion() as cx:
             cx.execute(
-                "INSERT INTO echanges (question, question_recherche, passages, reponse, statut, modele, jetons, cout_usd, durees_ms) "
-                "VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)",
+                "INSERT INTO echanges (question, question_recherche, passages, reponse, statut, modele, jetons, cout_usd, durees_ms, "
+                "outils, canal, document) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)",
                 (e["question"], e["question_recherche"], json.dumps(e["passages"]), e["reponse"], e["statut"],
-                 e["modele"], json.dumps(e["jetons"]), e["cout_usd"], json.dumps(e["durees_ms"])),
+                 e["modele"], json.dumps(e["jetons"]), e["cout_usd"], json.dumps(e["durees_ms"]),
+                 json.dumps(e.get("outils", []), ensure_ascii=False), e.get("canal", "web"), bool(e.get("document"))),
             )
 
     def cout_du_jour(self) -> float:
         with self.connexion() as cx:
             return float(cx.execute("SELECT coalesce(sum(cout_usd), 0) FROM echanges WHERE cree_le > now() - interval '1 day'").fetchone()[0])
 
+    def statistiques(self, jours: int = 30) -> dict:
+        """Agrégats d'usage pour le tableau de bord (aucun texte de question ni de réponse)."""
+        with self.connexion() as cx:
+            g = cx.execute(
+                """SELECT count(*), coalesce(sum(cout_usd), 0), coalesce(avg(cout_usd), 0),
+                          percentile_cont(0.5) WITHIN GROUP (ORDER BY (durees_ms->>'total')::float),
+                          percentile_cont(0.95) WITHIN GROUP (ORDER BY (durees_ms->>'total')::float),
+                          percentile_cont(0.5) WITHIN GROUP (ORDER BY (durees_ms->>'premier_mot')::float),
+                          count(*) FILTER (WHERE statut <> 'ok'),
+                          coalesce(sum((jetons->>'entree')::bigint), 0), coalesce(sum((jetons->>'cache_lecture')::bigint), 0),
+                          coalesce(sum((jetons->>'cache_ecriture')::bigint), 0), coalesce(sum((jetons->>'sortie')::bigint), 0),
+                          count(*) FILTER (WHERE document), count(*) FILTER (WHERE canal = 'mcp')
+                   FROM echanges WHERE cree_le > now() - make_interval(days => %s)""", (jours,)).fetchone()
+            par_jour = cx.execute(
+                """SELECT d::date, count(e.id), coalesce(sum(e.cout_usd), 0)
+                   FROM generate_series(current_date - 13, current_date, interval '1 day') d
+                   LEFT JOIN echanges e ON e.cree_le::date = d::date GROUP BY d ORDER BY d""").fetchall()
+            outils = cx.execute(
+                """SELECT o->>'outil', count(*), round(avg((o->>'duree_ms')::numeric)) FROM echanges, jsonb_array_elements(outils) o
+                   WHERE cree_le > now() - make_interval(days => %s) GROUP BY 1 ORDER BY 2 DESC""", (jours,)).fetchall()
+        lus = g[7] + g[8] + g[9]
+        return {
+            "jours": jours, "echanges": g[0], "cout_total_usd": round(float(g[1]), 4), "cout_moyen_usd": round(float(g[2]), 5),
+            "duree_mediane_ms": round(g[3] or 0), "duree_p95_ms": round(g[4] or 0), "premier_mot_median_ms": round(g[5] or 0),
+            "taux_erreur": round(g[6] / g[0], 3) if g[0] else 0, "jetons_sortie": g[10],
+            "part_cache": round(g[8] / lus, 3) if lus else 0, "documents_lus": g[11], "appels_mcp": g[12],
+            "par_jour": [{"jour": d.isoformat(), "echanges": n, "cout_usd": round(float(c), 4)} for d, n, c in par_jour],
+            "outils": [{"outil": o, "appels": n, "duree_moyenne_ms": int(m or 0)} for o, n, m in outils],
+        }
+
+    def enregistrer_evaluation(self, resultats: dict) -> None:
+        with self.connexion() as cx:
+            cx.execute("INSERT INTO evaluations (resultats) VALUES (%s)", (json.dumps(resultats, ensure_ascii=False),))
+
+    def derniere_evaluation(self) -> dict:
+        with self.connexion() as cx:
+            l = cx.execute("SELECT resultats FROM evaluations ORDER BY id DESC LIMIT 1").fetchone()
+        if not l:
+            return {}
+        r = dict(l[0])
+        r.pop("details_agent", None)   # les réponses détaillées restent en base, pas sur la page publique
+        return r
+
     def purger_journal(self, jours: int = 30) -> None:
         with self.connexion() as cx:
             cx.execute("DELETE FROM echanges WHERE cree_le < now() - make_interval(days => %s)", (jours,))
+            cx.execute("DELETE FROM escalades WHERE cree_le < now() - make_interval(days => %s)", (jours,))
