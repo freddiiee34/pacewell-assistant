@@ -32,8 +32,11 @@ def url_base():
 class FauxClaude:
     """Remplace l'API : réponses prévisibles, et trace des appels pour les vérifier."""
 
-    def __init__(self, reponse="Les retours sont gratuits sous 30 jours [1].", note_par_mot=None, echec=False):
+    def __init__(self, reponse="Les retours sont gratuits sous 30 jours [1].", note_par_mot=None, echec=False, tours=None,
+                 document=None):
         self.reponse, self.note_par_mot, self.echec = reponse, note_par_mot or {}, echec
+        self.tours = list(tours) if tours else None   # tours scriptés de l'agent : listes de blocs
+        self.document = document
         self.appels = []
 
     def texte(self, modele, systeme, message, max_tokens=300):
@@ -52,6 +55,30 @@ class FauxClaude:
             note = max([n for mot, n in self.note_par_mot.items() if mot.lower() in corps.lower()] or [1])
             notes.append({"id": int(pid), "note": note})
         return {"notes": notes}, Usage(modele, 1000, 80)
+
+    def image_outil(self, modele, systeme, image_b64, media, consigne, outil, max_tokens=800):
+        self.appels.append(("image", modele, media))
+        return self.document or {"type_document": "bon_de_livraison", "numero_commande": "PW104233", "articles": [], "lisible": True}, \
+            Usage(modele, 1200, 90)
+
+    def flux_outils(self, modele, systeme, messages, outils, max_tokens=900):
+        """Agent simulé. Par défaut : 1er tour = recherche dans la documentation, 2e tour = réponse."""
+        self.appels.append(("agent", modele, messages))
+        if self.echec:
+            raise RuntimeError("API indisponible")
+        if self.tours is not None:
+            blocs = self.tours.pop(0)
+        elif not any(isinstance(m["content"], list) for m in messages):
+            question = messages[-1]["content"].split("\n")[-1]
+            blocs = [{"type": "tool_use", "id": f"t{len(self.appels)}", "name": "chercher_documentation", "input": {"requete": question}}]
+        else:
+            blocs = [{"type": "text", "text": self.reponse}]
+        for b in blocs:
+            if b["type"] == "text":
+                for mot in b["text"].split(" "):
+                    yield ("texte", mot + " ")
+        arret = "tool_use" if any(b["type"] == "tool_use" for b in blocs) else "end_turn"
+        yield ("fin", blocs, arret, Usage(modele, 800, 60, cache_ecriture=0, cache_lecture=1800))
 
     def flux(self, modele, systeme, messages, max_tokens=700):
         self.appels.append(("flux", modele, messages))
