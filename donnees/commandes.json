@@ -1,0 +1,46 @@
+[
+  {
+    "numero": "PW104233", "email": "camille.martin@exemple.fr", "prenom": "Camille",
+    "commandee_il_y_a_jours": 14, "livree_il_y_a_jours": 11, "statut": "livree",
+    "mode_livraison": "Point relais", "transporteur": "Mondial Relay", "suivi": "MR48213377FR",
+    "articles": [
+      {"sku": "TEMPO3-425-BL", "nom": "Pacewell Tempo 3", "variante": "42,5, bleu nuit", "prix": 129.0, "quantite": 1, "categorie": "chaussures"},
+      {"sku": "CHAUS-DC-3942", "nom": "Chaussettes Pacewell Double Couche", "variante": "39-42", "prix": 16.0, "quantite": 2, "categorie": "chaussettes"}
+    ]
+  },
+  {
+    "numero": "PW104388", "email": "julien.robert@exemple.fr", "prenom": "Julien",
+    "commandee_il_y_a_jours": 2, "livree_il_y_a_jours": null, "statut": "expediee",
+    "mode_livraison": "Domicile (Colissimo)", "transporteur": "Colissimo", "suivi": "6A23345890112",
+    "articles": [
+      {"sku": "CRETE-44-NR", "nom": "Pacewell Crête GTX", "variante": "44, noir", "prix": 169.0, "quantite": 1, "categorie": "chaussures"},
+      {"sku": "AVERSE-M-H", "nom": "Veste Pacewell Averse", "variante": "M, coupe homme", "prix": 119.0, "quantite": 1, "categorie": "textile"}
+    ]
+  },
+  {
+    "numero": "PW103917", "email": "sarah.lefevre@exemple.fr", "prenom": "Sarah",
+    "commandee_il_y_a_jours": 45, "livree_il_y_a_jours": 42, "statut": "livree",
+    "mode_livraison": "Point relais", "transporteur": "Mondial Relay", "suivi": "MR47110293FR",
+    "articles": [
+      {"sku": "NUAGE-39-GR", "nom": "Pacewell Nuage", "variante": "39, gris", "prix": 149.0, "quantite": 1, "categorie": "chaussures"},
+      {"sku": "GEL-CIT-12", "nom": "Gels énergétiques Pacewell, citron", "variante": "boîte de 12", "prix": 27.0, "quantite": 1, "categorie": "nutrition"}
+    ]
+  },
+  {
+    "numero": "PW104402", "email": "thomas.dubois@exemple.fr", "prenom": "Thomas",
+    "commandee_il_y_a_jours": 0, "livree_il_y_a_jours": null, "statut": "en_preparation",
+    "mode_livraison": "Express domicile", "transporteur": "Chronopost", "suivi": null,
+    "articles": [
+      {"sku": "CARBON-43", "nom": "Kestrel Carbon Pro", "variante": "43", "prix": 249.0, "quantite": 1, "categorie": "chaussures"}
+    ]
+  },
+  {
+    "numero": "PW104120", "email": "lea.petit@exemple.fr", "prenom": "Léa",
+    "commandee_il_y_a_jours": 9, "livree_il_y_a_jours": 6, "statut": "livree",
+    "mode_livraison": "Retrait au magasin de Lille", "transporteur": null, "suivi": null,
+    "articles": [
+      {"sku": "RIDGE2-40-L", "nom": "Altura Ridge 2 Large", "variante": "40", "prix": 155.0, "quantite": 1, "categorie": "chaussures"},
+      {"sku": "SAC-U12-SM", "nom": "Sac Pacewell Ultra 12", "variante": "S/M", "prix": 109.0, "quantite": 1, "categorie": "accessoires"}
+    ]
+  }
+]
